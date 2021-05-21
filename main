@@ -1,0 +1,55 @@
+import time
+import math
+from Sunfounder_I2C import *
+from Sunfounder_PWM_Servo_Driver import *
+from ADC import *
+from servoTest import *
+
+bottomLeft = AnalogIn(mcp, MCP.P0)
+upperLeft = AnalogIn(mcp, MCP.P1)
+bottomRight = AnalogIn(mcp, MCP.P3)
+upperRight = AnalogIn(mcp, MCP.P2)
+
+def constrain(n,min,max):
+    if n > max: return max
+    if n < min: return min
+    return n
+
+def main():
+    # As a precaution set all servo output pins to zero
+    servoBoard.setAllPWM(0,0)
+    #set K
+    K = .000001
+    #initialize servo position
+    PULSE_tilt = 6
+    PULSE_pan = 5
+
+    while (True):
+        #Tilt average both sets of LDRs and find difference between bottom and top
+        upAvg = (upperLeft.value + upperRight.value) / 2
+        dwnAvg = (bottomLeft.value + bottomRight.value) / 2
+        PV_tilt = upAvg - dwnAvg
+
+        #pan
+        rightAvg = (upperRight.value + bottomRight.value) / 2
+        leftAvg = (upperLeft.value + bottomLeft.value) / 2
+        PV_pan = rightAvg - leftAvg
+
+        #scale
+        PO_tilt = K * PV_tilt
+        PO_pan = K * PV_pan
+
+
+        PULSE_tilt = constrain((PULSE_tilt + PO_tilt),MIN_PULSE,MAX_PULSE)
+        PULSE_pan = constrain((PULSE_pan + PO_pan), MIN_PULSE, MAX_PULSE)
+
+       # print(PULSE_tilt)
+       # print(PULSE_pan)
+
+        servoBoard.setPWM(TILT,0,duty_12bit(PULSE_tilt))
+        servoBoard.setPWM(PAN, 0, duty_12bit(PULSE_pan))
+        time.sleep(.05)
+        servoBoard.setAllPWM(0,0)
+
+
+main()
